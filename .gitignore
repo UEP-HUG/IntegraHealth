@@ -15,7 +15,6 @@
 *.aux
 *.toc
 *.tex
-*.md
 *.bbl
 *.bcf
 *.blg
