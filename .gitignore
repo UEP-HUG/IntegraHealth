@@ -26,6 +26,7 @@
 output/figures/
 Introduction_files/
 Thumbs.db
+manuscript/*
 data/*
 data/external_inputs/no2/
 data/external_inputs/pm10/
