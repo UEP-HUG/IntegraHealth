@@ -102,7 +102,6 @@ cov_all <-      "SEX_F + NBAGE_std + MODEL_MF + MODEL_HMO + MODEL_TEL + ssep3_q 
 cov_nocancer <- "SEX_F + NBAGE_std + MODEL_MF + MODEL_HMO + MODEL_TEL + ssep3_q + DEDUCTIBLE_300 + DEDUCTIBLE_500 + DEDUCTIBLE_1000 + DEDUCTIBLE_1500 + DEDUCTIBLE_2000 + region_DE + D_MEDIC_B_log + n_atc_log + n_month_inpatienthosp_log + locdrhosp + Asthma_PCG + Diabetes_PCG + Epilepsy_PCG + Glaucoma_PCG + HIV_AIDS_PCG + Heart_disease_PCG + Hypertension_related_PCG + Immune_PCG + Inflammatory_PCG + Mental_PCG + Other_PCG + Pain_PCG + Parkinson_PCG + Thyroid_PCG + mean_no2_std + mean_ndvi_std + mean_carnight_std + urb_Peri_urban + urb_Urban"
 cov_clini <-    "n_atc_log + n_month_inpatienthosp_log + locdrhosp + Asthma_PCG + Cancer_PCG + Diabetes_PCG + Epilepsy_PCG + Glaucoma_PCG + HIV_AIDS_PCG + Heart_disease_PCG + Hypertension_related_PCG + Immune_PCG + Inflammatory_PCG + Mental_PCG + Other_PCG + Pain_PCG + Parkinson_PCG + Thyroid_PCG"
 cov_clini_nocancer <-    "n_atc_log + n_month_inpatienthosp_log + locdrhosp + Asthma_PCG + Diabetes_PCG + Epilepsy_PCG + Glaucoma_PCG + HIV_AIDS_PCG + Heart_disease_PCG + Hypertension_related_PCG + Immune_PCG + Inflammatory_PCG + Mental_PCG + Other_PCG + Pain_PCG + Parkinson_PCG + Thyroid_PCG"
-
 cov_demo <-     "SEX_F + NBAGE_std + ssep3_q + region_FR + DEDUCTIBLE_300 + DEDUCTIBLE_500 + DEDUCTIBLE_1000 + DEDUCTIBLE_1500 + DEDUCTIBLE_2000 + MODEL_MF + MODEL_HMO + MODEL_TEL"
 cov_envi <-     "D_MEDIC_B_log + mean_no2_std + mean_ndvi_std + mean_carnight_std + urb_Peri_urban + urb_Urban" 
 cov_insurance <- "DEDUCTIBLE_300 + DEDUCTIBLE_500 + DEDUCTIBLE_1000 + DEDUCTIBLE_1500 + DEDUCTIBLE_2000 + MODEL_MF + MODEL_HMO + MODEL_TEL"
@@ -515,7 +514,8 @@ metrics <- round(metrics, 3)
 # Simplify row names
 rownames(metrics) <- c("ICC", "R2_marginal", "R2_conditional")
 
-plot_model(model_all_cam_si_all_cancer, rm.terms = c("SEX_F", "NBAGE_std", "MODEL_MF", "MODEL_HMO", "MODEL_TEL", "ssep3_q", 
+model_all_cam_si_all_cancer
+plot_model(model_all_cam_si_all_cancer, rm.terms = c('(Intercept)',"SEX_F", "NBAGE_std", "MODEL_MF", "MODEL_HMO", "MODEL_TEL", "ssep3_q", 
                                               "DEDUCTIBLE_300", "DEDUCTIBLE_500", "DEDUCTIBLE_1000", "DEDUCTIBLE_1500", "DEDUCTIBLE_2000", 
                                               "region_DE", "D_MEDIC_B_log", "n_month_inpatienthosp_log", "locdrhosp", 
                                               "Asthma_PCG", "Cancer_PCG", "Diabetes_PCG", "Epilepsy_PCG", "Glaucoma_PCG", 
@@ -527,7 +527,7 @@ cam_si <- plot_models(model_all_cam_si_all,
                     model_all_cam_si_all_nopcg,
                     model_all_cam_si_all_multi,
                     model_all_cam_si_all_cancer,
-                      rm.terms = c("SEX_F", "NBAGE_std", "MODEL_MF", "MODEL_HMO", "MODEL_TEL", "ssep3_q", 
+                      rm.terms = c('(Intercept)',"SEX_F", "NBAGE_std", "MODEL_MF", "MODEL_HMO", "MODEL_TEL", "ssep3_q", 
                                 "DEDUCTIBLE_300", "DEDUCTIBLE_500", "DEDUCTIBLE_1000", "DEDUCTIBLE_1500", "DEDUCTIBLE_2000", 
                                 "region_DE", "D_MEDIC_B_log", "n_atc_log", "n_month_inpatienthosp_log", "locdrhosp", 
                                 "Asthma_PCG", "Cancer_PCG", "Diabetes_PCG", "Epilepsy_PCG", "Glaucoma_PCG", 
@@ -586,7 +586,7 @@ cam_mhi <- plot_models(model_all_cam_mhi_all,
                       model_all_cam_mhi_all_nopcg,
                       model_all_cam_mhi_all_multi,
                       model_all_cam_mhi_all_cancer,
-                      rm.terms = c("SEX_F", "NBAGE_std", "MODEL_MF", "MODEL_HMO", "MODEL_TEL", "ssep3_q", 
+                      rm.terms = c('(Intercept)',"SEX_F", "NBAGE_std", "MODEL_MF", "MODEL_HMO", "MODEL_TEL", "ssep3_q", 
                                    "DEDUCTIBLE_300", "DEDUCTIBLE_500", "DEDUCTIBLE_1000", "DEDUCTIBLE_1500", "DEDUCTIBLE_2000", 
                                    "region_DE", "D_MEDIC_B_log", "n_atc_log", "n_month_inpatienthosp_log", "locdrhosp", 
                                    "Asthma_PCG", "Cancer_PCG", "Diabetes_PCG", "Epilepsy_PCG", "Glaucoma_PCG", 
@@ -683,7 +683,7 @@ ggsave(paste0(result_folder,'full_table_cam_impact.png'), combined_plot, width =
 
 
 plot_model(model_all_cam_mhi_all, show.values=TRUE, value.offset=0.3, vline.color = "black", sort.est = FALSE, axis.lim=c(-1, 3), axis.labels = variable_labels, title = '')
-
+?plot_models
 
 p1 <- plot_models(model_all_cam_mhi_all,
                   model_all_cam_mhi_demo,
