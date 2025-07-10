@@ -169,7 +169,7 @@ def compute_getis(df, col, w, n_permut, transform_type='R', star=True,
     # Add results to DataFrame
     df[z_sim] = g.Zs
     df[p_sim] = g.p_sim
-    df[classes] = 'Not significant'  # Initialize classification column
+    df[classes] = 'Neutral - P ≥ 0.1'  # Initialize classification column
     
     # Set significance levels
     significance_levels = [0.1, 0.05, 0.01]
@@ -180,15 +180,15 @@ def compute_getis(df, col, w, n_permut, transform_type='R', star=True,
     # This prevents overwriting more significant results
     # significance_levels.sort()  # Sort from smallest to largest
     for level in significance_levels:
-        df.loc[(df[p_sim] < level) & (df[z_sim] > 0), classes] = f"Hot Spot - p < {level}"
-        df.loc[(df[p_sim] < level) & (df[z_sim] < 0), classes] = f"Cold Spot - p < {level}"
+        df.loc[(df[p_sim] < level) & (df[z_sim] > 0), classes] = f"Hot spot - P < {level}"
+        df.loc[(df[p_sim] < level) & (df[z_sim] < 0), classes] = f"Cold spot - P < {level}"
     
     # Apply FDR correction if requested
     if fdr:
         fdr_value = esda.fdr(g.p_sim, fdr_alpha)
         fdr_classes = f"{classes}_fdr"
         df[fdr_classes] = df[classes].copy()
-        df.loc[(df[p_sim] >= fdr_value), fdr_classes] = 'Not significant'
+        df.loc[(df[p_sim] >= fdr_value), fdr_classes] = 'Neutral - P ≥ 0.1'
         logging.info(f"FDR correction applied with alpha={fdr_alpha}, threshold={fdr_value}")
     
     logging.info("Getis-Ord analysis complete")
@@ -245,24 +245,24 @@ def plot_getis_by_class(df, x, y, label, xtick_size=12, title_size=16, xlabel_si
     fig, ax = plt.subplots(figsize=(5, 5))
     # colors = ['#2166ac', '#67a9cf', '#d1e5f0', '#b2182b', '#ef8a62', '#fddbc7', '#f7f7f7']
     colors_cl_getis = {
-        'Cold Spot - p < 0.1': '#d1e5f0',
-        'Cold Spot - p < 0.05': '#67a9cf',
-        'Cold Spot - p < 0.01': '#2166ac',
-        'Hot Spot - p < 0.1': '#fddbc7',
-        'Hot Spot - p < 0.05': '#ef8a62',
-        'Hot Spot - p < 0.01': '#c70820',
-        'Not significant': '#bdbdbd'
+        'Cold spot - P < 0.1': '#d1e5f0',
+        'Cold spot - P < 0.05': '#67a9cf',
+        'Cold spot - P < 0.01': '#2166ac',
+        'Hot spot - P < 0.1': '#fddbc7',
+        'Hot spot - P < 0.05': '#ef8a62',
+        'Hot spot - P < 0.01': '#c70820',
+        'Neutral - P ≥ 0.1': '#bdbdbd'
     }
-    order = ['Cold Spot - p < 0.01', 'Cold Spot - p < 0.05', 'Cold Spot - p < 0.1', 'Hot Spot - p < 0.01',
-    'Hot Spot - p < 0.05', 'Hot Spot - p < 0.1', 'Not significant']
+    order = ['Cold spot - P < 0.01', 'Cold spot - P < 0.05', 'Cold spot - P < 0.1', 'Hot spot - P < 0.01',
+    'Hot spot - P < 0.05', 'Hot spot - P < 0.1', 'Neutral - P ≥ 0.1']
     # Add p < 0.001 colors if required
     if p_001:
-        colors_cl_getis['Cold Spot - p < 0.001'] = '#1c4978'
-        colors_cl_getis['Hot Spot - p < 0.001'] = '#991d2c'
+        colors_cl_getis['Cold spot - P < 0.001'] = '#1c4978'
+        colors_cl_getis['Hot spot - P < 0.001'] = '#991d2c'
 
         # Ordering colors according to the unique sorted values in the column
-        order = ['Cold Spot - p < 0.001', 'Cold Spot - p < 0.01', 'Cold Spot - p < 0.05', 'Cold Spot - p < 0.1', 'Hot Spot - p < 0.001', 'Hot Spot - p < 0.01',
- 'Hot Spot - p < 0.05', 'Hot Spot - p < 0.1', 'Not significant']
+        order = ['Cold spot - P < 0.001', 'Cold spot - P < 0.01', 'Cold spot - P < 0.05', 'Cold spot - P < 0.1', 'Hot spot - P < 0.001', 'Hot spot - P < 0.01',
+ 'Hot spot - P < 0.05', 'Hot spot - P < 0.1', 'Neutral - P ≥ 0.1']
     colors_plot = [colors_cl_getis[i] for i in df[x].sort_values().unique()]
 
     ylim_max = df[y].quantile(q=0.99)
@@ -337,19 +337,19 @@ def plotGetisMap_ge(db, col, p_001=False,markersize_s=5, markersize_l=8, commune
 
 
     colors_cl_getis = {
-        'Cold Spot - p < 0.1': '#d1e5f0',
-        'Cold Spot - p < 0.05': '#67a9cf',
-        'Cold Spot - p < 0.01': '#2166ac',
-        'Hot Spot - p < 0.1': '#fddbc7',
-        'Hot Spot - p < 0.05': '#ef8a62',
-        'Hot Spot - p < 0.01': '#b2182b',
-        'Not significant': '#bdbdbd'
+        'Cold Spot - P < 0.1': '#d1e5f0',
+        'Cold Spot - P < 0.05': '#67a9cf',
+        'Cold Spot - P < 0.01': '#2166ac',
+        'Hot Spot - P < 0.1': '#fddbc7',
+        'Hot Spot - P < 0.05': '#ef8a62',
+        'Hot Spot - P < 0.01': '#c70820',
+        'Neutral - P ≥ 0.1': '#bdbdbd'
     }
 
     # Add p < 0.001 colors if required
     if p_001:
-        colors_cl_getis['Cold Spot - p < 0.001'] = '#1c4978'
-        colors_cl_getis['Hot Spot - p < 0.001'] = '#991d2c'
+        colors_cl_getis['Cold Spot - P < 0.001'] = '#1c4978'
+        colors_cl_getis['Hot Spot - P < 0.001'] = '#991d2c'
 
     # Ordering colors according to the unique sorted values in the column
     hmap = colors.ListedColormap([colors_cl_getis[i] for i in db[col].sort_values().unique()])
@@ -697,24 +697,26 @@ def plotGetisMap(db, col, p_001=False,markersize_s=1, markersize_l=5, commune_na
     """
     print('Plot Getis Map')
     fig, ax = plt.subplots(1, figsize=(10, 10))
-    y = db[col] + ' [' + db[col].map(db[col].value_counts()).astype(str) + ']'
-    # y = db[col] + ' (' + db[col].map(db.groupby(col)[col.split('_G_cl')[0]].mean().mul(100).round(1)).astype(str) + '%)'
+    # y = db[col] + ' [' + db[col].map(db[col].value_counts()).astype(str) + ']'
+    # y = db[col] + ' [$n$=' + db[col].map(db[col].value_counts()).astype(str) + ']'
+    percentage_gp = ' ('+db[col].map((db[col].value_counts()/db.shape[0]).mul(100).round(1).astype(str))+' %)'
+    n_gp = ' [$n$=' + db[col].map(db[col].value_counts()).astype(str) + ']'
+    y = db[col] + n_gp + percentage_gp
 
 
     colors_cl_getis = {
-        'Cold Spot - p < 0.1': '#d1e5f0',
-        'Cold Spot - p < 0.05': '#67a9cf',
-        'Cold Spot - p < 0.01': '#2166ac',
-        'Hot Spot - p < 0.1': '#fddbc7',
-        'Hot Spot - p < 0.05': '#ef8a62',
-        'Hot Spot - p < 0.01': '#b2182b',
-        'Not significant': '#bdbdbd'
+        'Cold spot - P < 0.1': '#d1e5f0',
+        'Cold spot - P < 0.05': '#67a9cf',
+        'Cold spot - P < 0.01': '#2166ac',
+        'Hot spot - P < 0.1': '#fddbc7',
+        'Hot spot - P < 0.05': '#ef8a62',
+        'Hot spot - P < 0.01': '#c70820',
+        'Neutral - P ≥ 0.1': '#bdbdbd'
     }
-
     # Add p < 0.001 colors if required
     if p_001:
-        colors_cl_getis['Cold Spot - p < 0.001'] = '#1c4978'
-        colors_cl_getis['Hot Spot - p < 0.001'] = '#991d2c'
+        colors_cl_getis['Cold spot - P < 0.001'] = '#1c4978'
+        colors_cl_getis['Hot spot - P < 0.001'] = '#991d2c'
 
     # Ordering colors according to the unique sorted values in the column
     hmap = colors.ListedColormap([colors_cl_getis[i] for i in db[col].sort_values().unique()])

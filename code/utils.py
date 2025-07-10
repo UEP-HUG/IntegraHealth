@@ -147,6 +147,7 @@ def show_values(axs, orient="v", digits=2, fontsize=8, space=.05):
             _single(ax)
     else:
         _single(axs)
+
 def find_intersection(row, cols):
     """
     Finds the intersection of sets in specified columns of a DataFrame row.
@@ -285,6 +286,7 @@ def plot_categorical_proportional_diff(df_sample, df_matched, categorical_column
     ax.grid(axis='y') 
     plt.tight_layout()
     plt.show()
+    
 def compute_mean_differences_and_proportions(df_before, df_after, variable_names, treatment_var):
     results = []
     for old_name, new_name in zip(variable_names['old'], variable_names['new']):

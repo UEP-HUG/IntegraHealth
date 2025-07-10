@@ -44,10 +44,9 @@ output/
 # History files
 .Rhistory
 .Rapp.history
-
 # Session Data files
 .RData
-
+.RDataTmp
 # User-specific files
 .Ruserdata
 
@@ -82,3 +81,4 @@ output/
 !data/external_inputs/
 !data/external_inputs/.ipynb_checkpoints/
 **/.ipynb_checkpoints/
+.RDataTmp
