@@ -28,7 +28,7 @@ result_folder <- './results/'
 data_folder <- '../SanteIntegra/Data/'
 # Load data
 ## Full dataset (5 years)
-df <- read_parquet(file.path(data_folder, "processed/df_treated_5years.parquet.gzip"))
+# df <- read_parquet(file.path(data_folder, "processed/df_treated_5years.parquet.gzip"))
 ## Full dataset (open cohort)
 df_open <- read_parquet(file.path(data_folder, "processed/df_treated_open.parquet.gzip"))
 ## Subsets (5 years)
@@ -42,8 +42,14 @@ df_healthy_open <- read_parquet(file.path(data_folder, "processed/df_healthy_nom
 df_cancer_open <- read_parquet(file.path(data_folder, "processed/df_cancer_nominors_open.parquet.gzip"))
 
 # Apply transformations to dataframes
-df <- scale_and_modify_dataframe(df)
+# df <- scale_and_modify_dataframe(df)
 df_open <- scale_and_modify_dataframe(df_open)
+
+logical_cols <- c("SEX_F", "MODEL_MF", "MODEL_HMO", "MODEL_TEL")
+df_open[logical_cols] <- lapply(df_open[logical_cols], as.factor)
+# df[logical_cols] <- lapply(df[logical_cols], as.factor)
+
+
 
 # df_multimorbidity <- scale_and_modify_dataframe(df_multimorbidity)
 # df_healthy <- scale_and_modify_dataframe(df_healthy)
@@ -54,10 +60,13 @@ df_multimorbidity_open <- scale_and_modify_dataframe(df_multimorbidity_open)
 df_healthy_open <- scale_and_modify_dataframe(df_healthy_open)
 df_cancer_open <- scale_and_modify_dataframe(df_cancer_open)
 
+df_multimorbidity_open[logical_cols] <- lapply(df_multimorbidity_open[logical_cols], as.factor)
+df_healthy_open[logical_cols] <- lapply(df_healthy_open[logical_cols], as.factor)
+df_cancer_open[logical_cols] <- lapply(df_cancer_open[logical_cols], as.factor)
 
 # Filter data for specific conditions
-df_aos_costs <- filter_aos_costs(df)
-df_aos_costs_v2 <- df[df$PRESTATIONS_BRUTES_AOS > 0, ]
+# df_aos_costs <- filter_aos_costs(df)
+# df_aos_costs_v2 <- df[df$PRESTATIONS_BRUTES_AOS > 0, ]
 
 # df_aos_costs_nonull <- df[df$PRESTATIONS_BRUTES_AOS > 0, ]
 # df_lca_costs <- df[df$PRESTATIONS_BRUTES_LCA > 0, ]
@@ -108,10 +117,11 @@ t1 <- df_open %>%
                            Language = 'Region',
                            Urbanicity_simple = 'Urbanicity',
                            D_MEDIC_B = 'Access to primary care medicine (m)',
-                           mean_no2 = 'NO₂ Ccncentration (μg/m³)',
+                           mean_no2 = 'NO₂ Concentration (μg/m³)',
                            mean_ndvi = 'NDVI',
                            mean_carnight = 'Car noise (dB)'
               )) %>%
+  # add_overall()%>%
   add_p(test = list(all_categorical() ~ "chisq.test",    # Use chi-square test
                     all_continuous() ~ "kruskal.test")) %>%  # Use Kruskal-Wallis for continuous
   modify_header(label = "**Variable**") %>% # update the column header
@@ -129,8 +139,8 @@ t1 <- df_open %>%
   modify_table_styling (
     columns = label,
     rows = label %in% c('Asthma','Cancer','Diabetes','Epilepsy','Glaucoma','HIV/AIDS','Heart Disease','Hypertension','Immune Disorders','Inflammatory Disorders','Mental Health Conditions','Pain Related Conditions',"Parkinson's Disease",'Thyroid Disorders','Other Conditions'),
-    footnote = "Chronic disease categories based on pharmaceutical cost groups according to the classification by Nicolet et al [41]")
- 
+    footnote = "Chronic disease categories based on pharmaceutical cost groups according to the classification by Nicolet et al<sup>45</sup>")
+ t1
 t1_flex <- t1  %>%  as_flex_table() %>% 
   fontsize(size = 8, part = "all") %>% 
   padding(padding.top = 1, part = "all") %>%
@@ -170,7 +180,11 @@ save_as_docx(
   path = file.path(result_folder,'Table 1.docx'))
 
 # Table 1 - Usage type
-t1 <- df_open %>% 
+t1 <- df_open %>%
+  filter(usage_type %in% c("CAM (both SI & MHI)", 
+                           "CAM (MHI only)", 
+                           "CAM (SI only)", 
+                           "CM only"))  %>% 
   select('CDPHYSSEXE','age_group','deductible_cat','CAREMODEL','ssep3_q','locdrhosp','Asthma_PCG','Cancer_PCG','Diabetes_PCG','Epilepsy_PCG','Glaucoma_PCG','HIV_AIDS_PCG','Heart_disease_PCG','Hypertension_related_PCG','Immune_PCG','Inflammatory_PCG','Mental_PCG','Pain_PCG','Parkinson_PCG','Thyroid_PCG','Other_PCG','Language','Urbanicity_simple','D_MEDIC_B','mean_no2','mean_carnight','usage_type') %>% #'D_MEDIC_S','D_MEDIC_B'
   tbl_summary(by = usage_type, missing ='ifany',
               statistic = list(
@@ -223,7 +237,8 @@ t1 <- df_open %>%
   modify_table_styling (
     columns = label,
     rows = label %in% c('Asthma','Cancer','Diabetes','Epilepsy','Glaucoma','HIV/AIDS','Heart Disease','Hypertension','Immune Disorders','Inflammatory Disorders','Mental Health Conditions','Pain Related Conditions',"Parkinson's Disease",'Thyroid Disorders','Other Conditions'),
-    footnote = "Chronic disease categories based on pharmaceutical cost groups according to the classification by Nicolet et al [41]")
+    footnote = "Chronic disease categories based on pharmaceutical cost groups according to the classification by Nicolet et al<sup>45</sup>")
+t1
 t1_flex <- t1  %>%  as_flex_table() %>% 
   fontsize(size = 8, part = "all") %>% 
   padding(padding.top = 1, part = "all") %>%
@@ -262,7 +277,7 @@ save_as_docx(
 
 # Table 2 - Expenditures
 df_open$alternative_cam <- ifelse(df_open$PRESTATIONS_BRUTES_AOS == 0 & df_open$treatment_lca_cam == 1, 1, 0)
-df$alternative_cam <- ifelse(df$PRESTATIONS_BRUTES_AOS == 0 & df$treatment_lca_cam == 1, 1, 0)
+# df$alternative_cam <- ifelse(df$PRESTATIONS_BRUTES_AOS == 0 & df$treatment_lca_cam == 1, 1, 0)
 
 t2 <- df_open %>% 
   select('PRESTATIONS_BRUTES_AOS_b','PRESTATIONS_BRUTES_AOS','PRESTATIONS_BRUTES_LCA_b','PRESTATIONS_BRUTES_LCA','PRESTATIONS_BRUTES_CAM_b','PRESTATIONS_BRUTES_CAM','PRESTATIONS_BRUTES_CAM_TOTAL','alternative_cam','PRESTATIONS_CAM_LCA','NOANNEE') %>%
@@ -310,7 +325,7 @@ t2 <- df_open %>%
 t2 <- t2 %>%
   as_gt() %>%
   opt_footnote_marks(marks = letters)  # Uses lowercase letters a, b, c, etc.
-t2
+
 gt::gtsave(t2, file = file.path(result_folder,'Table 2 - all.png'), vwidth = 1500, vheight = 1000)
 
 
@@ -444,6 +459,7 @@ cov_reg <- "region_FR + D_MEDIC_B_log"
 ri <- " + (1|uuid) + (1|CANTON_ACRONYM)"
 
 
+source('./code/utils.R')
 # CAM - SI
 ## Binary
 model_lca_glmer_binary_all <- glmer(formula=paste0("treatment ~", cov_all, ri),
@@ -454,6 +470,7 @@ model_lca_glmer_binary_clini <- glmer(formula=paste0("treatment ~", cov_clini, r
                                       data=df_open, nAGQ=0, family = 'binomial', control = glmerControl(optimizer = "bobyqa"))
 model_lca_glmer_binary_envi <- glmer(formula=paste0("treatment ~", cov_envi, ri),
                                      data=df_open, nAGQ=0, family = 'binomial', control = glmerControl(optimizer = "bobyqa"))
+get_aor_cis(model_lca_glmer_binary_demo)
 
 ## Continuous
 model_lca_lmer_continuous_all <- lmer(paste0("ihs_cost_lca ~", cov_all, ri), data = df_lca_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
@@ -461,9 +478,18 @@ model_lca_lmer_continuous_demo <- lmer(paste0("ihs_cost_lca ~", cov_demo, ri), d
 model_lca_lmer_continuous_clini <- lmer(paste0("ihs_cost_lca ~", cov_clini, ri), data = df_lca_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 5e5), check.conv.grad = .makeCC("warning", tol = 5e-3)))
 model_lca_lmer_continuous_envi <- lmer(paste0("ihs_cost_lca ~", cov_envi, ri), data = df_lca_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 5e5), check.conv.grad = .makeCC("warning", tol = 5e-3)))
 
+#Marginal effects
+treatment_vars <- c("n_atc_log")
+model_lca_lmer_demo_effects <- calculate_marginal_effects_multiple(
+  model = model_lca_lmer_continuous_clini,
+  treatment_vars = treatment_vars,
+  is_large = TRUE,
+  sample_size = 100000
+)
+model_lca_lmer_demo_effects
+saveRDS(model_lca_lmer_demo_effects, "model_lca_lmer_demo_effects.rds")
 # CAM - MHI
 ## Binary
-### UPDATE 2025 CHECK WHETHER FOR CAM (MHI) WE SHOULDN'T RESTRICT THE ANALYSIS to CM > 0 (right now, a big part of the control group are people who did not use MHI coverage at all)
 
 model_cam_glmer_binary_all <- glmer(formula=paste0("treatment_cam_only ~", cov_all, ri),
                                     data=df_open, nAGQ=0, family = 'binomial', control = glmerControl(optimizer = "bobyqa"))
@@ -479,6 +505,17 @@ model_cam_lmer_continuous_all <- lmer(paste0("ihs_cost_cam ~", cov_all, ri), dat
 model_cam_lmer_continuous_demo <- lmer(paste0("ihs_cost_cam ~", cov_demo, ri), data = df_cam_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 5e5), check.conv.grad = .makeCC("warning", tol = 5e-3)))
 model_cam_lmer_continuous_clini <- lmer(paste0("ihs_cost_cam ~", cov_clini, ri), data = df_cam_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 5e5), check.conv.grad = .makeCC("warning", tol = 5e-3)))
 model_cam_lmer_continuous_envi <- lmer(paste0("ihs_cost_cam ~", cov_envi, ri), data = df_cam_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 5e5), check.conv.grad = .makeCC("warning", tol = 5e-3)))
+
+summary(model_cam_lmer_continuous_demo)
+treatment_vars <- c('n_atc_log')
+model_cam_lmer_demo_effects <- calculate_marginal_effects_multiple(
+  model = model_cam_lmer_continuous_clini,
+  treatment_vars = treatment_vars,
+  is_large = TRUE,
+  sample_size = 100000
+)
+model_cam_lmer_demo_effects
+saveRDS(model_lca_lmer_demo_effects, "model_lca_lmer_demo_effects.rds")
 
 # Organize models into lists
 lca_models <- list(
@@ -605,9 +642,9 @@ combined_plot <- p1_OR + p1_est +
 ggsave(paste0(result_folder,'Models/Determinants of LCA use/full_table_si.png'), combined_plot, width = 12, height = 15, units = "in", dpi = 300)
 ggsave(paste0(result_folder,'Figure 3.png'), combined_plot, width = 12, height = 15, units = "in", dpi = 300)
 
-# directory_path <- file.path(result_folder,"Models/Determinants of LCA use/")
-# tab_model(lca_models$binary$all,lca_models$binary$all,digits=3, show.reflvl = TRUE, pred.labels =variable_labels,title = 'Determinants of CAM - SI', dv.labels = c('CAM - SI usage','CAM - SI expenditures'), file = paste0(directory_path,"Combined_LCA.html"))
-# webshot(paste0(directory_path,'Combined_LCA.html'), paste0(directory_path,"20250630_Combined_LCA.png"))
+directory_path <- file.path(result_folder,"Models/Determinants of LCA use/")
+tab_model(lca_models$binary$all,lca_models$binary$all,digits=3, show.reflvl = TRUE, pred.labels =variable_labels,title = 'Determinants of CAM - SI', dv.labels = c('CAM - SI usage','CAM - SI expenditures'), file = paste0(directory_path,"Combined_LCA.html"))
+webshot(paste0(directory_path,'Combined_LCA.html'), paste0(directory_path,"20250715_Combined_LCA.png"))
 
 ## Plotting MHI
 
@@ -690,75 +727,74 @@ ggsave(paste0(result_folder,'Models/Determinants of CAM use/full_table_mhi.png')
 ggsave(paste0(result_folder,'Figure 2.png'), combined_plot, width = 12, height = 15, units = "in", dpi = 300)
 
 
-# directory_path <- file.path(result_folder,"/Models/Determinants of CAM use/")
-# tab_model(cam_models$binary$all,cam_models$continuous$all,digits=3, show.reflvl = TRUE, pred.labels =variable_labels,title = 'Determinants of CAM - MHI', dv.labels = c('CAM - MHI usage','CAM - MHI expenditures'), file = paste0(directory_path,"20250630_Combined_CAM.html"))
-# webshot(paste0(directory_path,'20250630_Combined_CAM.html'), paste0(directory_path,"20250630_Combined_CAM.png"))
+directory_path <- file.path(result_folder,"/Models/Determinants of CAM use/")
+tab_model(cam_models$binary$all,cam_models$continuous$all,digits=3, show.reflvl = TRUE, pred.labels =variable_labels,title = 'Determinants of CAM - MHI', dv.labels = c('CAM - MHI usage','CAM - MHI expenditures'), file = paste0(directory_path,"20250715_Combined_CAM.html"))
+webshot(paste0(directory_path,'20250715_Combined_CAM.html'), paste0(directory_path,"20250715_Combined_CAM.png"))
 
 
 ## Impact on CM expenses
 
 # CAM SI Usage on CM 
-
 model_all_cam_si_all <- lmer(      paste0("ihs_cost_aos ~  treatment*year +", cov_all, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_demo <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_demo, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_clini <- lmer(    paste0("ihs_cost_aos ~  treatment*year +", cov_clini, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_envi <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_envi, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 5e5), check.conv.grad = .makeCC("warning", tol = 5e-3)))
-model_all_cam_si_all_expend <- lmer(paste0("ihs_cost_aos ~  ihs_cost_lca*year +", cov_all, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_demo <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_demo, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_clini <- lmer(    paste0("ihs_cost_aos ~  treatment*year +", cov_clini, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_envi <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_envi, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 5e5), check.conv.grad = .makeCC("warning", tol = 5e-3)))
+# model_all_cam_si_all_expend <- lmer(paste0("ihs_cost_aos ~  ihs_cost_lca*year +", cov_all, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
 
 # CAM MHI Usage on CM
 # model_ri_all_5_3_cam <- lmer(ihs_cost_aos ~  treatment_cam_only*year + SEX_F + NBAGE_std + MODEL_MF + MODEL_HMO + MODEL_TEL + ssep3_q + D_MEDIC_B_log + DEDUCTIBLE_300 + DEDUCTIBLE_500 + DEDUCTIBLE_1000 + DEDUCTIBLE_1500 + DEDUCTIBLE_2000 + region_DE + n_atc_log + n_month_inpatienthosp_log + locdrhosp + Asthma_PCG + Cancer_PCG + Diabetes_PCG + Epilepsy_PCG + Glaucoma_PCG + HIV_AIDS_PCG + Heart_disease_PCG + Hypertension_related_PCG + Immune_PCG + Inflammatory_PCG + Mental_PCG + Other_PCG + Pain_PCG + Parkinson_PCG + Thyroid_PCG + mean_no2_std + mean_ndvi_std + mean_carnight_std + urb_Peri_urban + urb_Urban +  (1|CANTON_ACRONYM) + (1 |uuid), data = df_aos_open_costs, REML = FALSE)
 model_all_cam_mhi_all <- lmer(      paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_all, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_mhi_demo <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_demo, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_mhi_clini <- lmer(    paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_clini, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_mhi_envi <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_envi, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 5e5), check.conv.grad = .makeCC("warning", tol = 5e-3)))
-model_all_cam_mhi_all_expend <- lmer(paste0("ihs_cost_aos ~  ihs_cost_cam*year +", cov_all, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_mhi_demo <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_demo, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_mhi_clini <- lmer(    paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_clini, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_mhi_envi <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_envi, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 5e5), check.conv.grad = .makeCC("warning", tol = 5e-3)))
+# model_all_cam_mhi_all_expend <- lmer(paste0("ihs_cost_aos ~  ihs_cost_cam*year +", cov_all, ri), data = df_aos_open_costs, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
 
 ## Multimorbid
 
 # CAM SI Usage on CM 
 model_all_cam_si_all_multi <- lmer(      paste0("ihs_cost_aos ~  treatment*year +", cov_all, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_demo_multi <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_demo, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_clini_multi <- lmer(    paste0("ihs_cost_aos ~  treatment*year +", cov_clini, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_envi_multi <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_envi, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_all_expend_multi <- lmer(paste0("ihs_cost_aos ~  ihs_cost_lca*year +", cov_all, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_demo_multi <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_demo, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_clini_multi <- lmer(    paste0("ihs_cost_aos ~  treatment*year +", cov_clini, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_envi_multi <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_envi, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_all_expend_multi <- lmer(paste0("ihs_cost_aos ~  ihs_cost_lca*year +", cov_all, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
 
 # CAM MHI Usage on CM
 model_all_cam_mhi_all_multi <- lmer(      paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_all, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_mhi_demo_multi <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_demo, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_mhi_clini_multi <- lmer(    paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_clini, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_mhi_envi_multi <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_envi, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_mhi_all_expend_multi <- lmer(paste0("ihs_cost_aos ~  ihs_cost_cam*year +", cov_all, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_mhi_demo_multi <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_demo, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_mhi_clini_multi <- lmer(    paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_clini, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_mhi_envi_multi <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_envi, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_mhi_all_expend_multi <- lmer(paste0("ihs_cost_aos ~  ihs_cost_cam*year +", cov_all, ri), data = df_multimorbidity_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
 
 ## Cancer
 # CAM SI Usage on CM 
 model_all_cam_si_all_cancer <- lmer(      paste0("ihs_cost_aos ~  treatment*year +", cov_nocancer, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_demo_cancer <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_demo, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_clini_cancer <- lmer(    paste0("ihs_cost_aos ~  treatment*year +", cov_clini_nocancer, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_envi_cancer <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_envi, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_all_expend_cancer <- lmer(paste0("ihs_cost_aos ~  ihs_cost_lca*year +", cov_nocancer, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_demo_cancer <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_demo, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_clini_cancer <- lmer(    paste0("ihs_cost_aos ~  treatment*year +", cov_clini_nocancer, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_envi_cancer <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_envi, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_all_expend_cancer <- lmer(paste0("ihs_cost_aos ~  ihs_cost_lca*year +", cov_nocancer, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
 
 # CAM MHI Usage on CM
 model_all_cam_mhi_all_cancer <- lmer(      paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_nocancer, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_mhi_demo_cancer <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_demo, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_mhi_clini_cancer <- lmer(    paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_clini_nocancer, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_mhi_envi_cancer <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_envi, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_mhi_all_expend_cancer <- lmer(paste0("ihs_cost_aos ~  ihs_cost_cam*year +", cov_nocancer, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_mhi_demo_cancer <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_demo, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_mhi_clini_cancer <- lmer(    paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_clini_nocancer, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_mhi_envi_cancer <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_envi, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_mhi_all_expend_cancer <- lmer(paste0("ihs_cost_aos ~  ihs_cost_cam*year +", cov_nocancer, ri), data = df_cancer_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
 
 ## No PCG
 
 # CAM SI Usage on CM 
 model_all_cam_si_all_nopcg <- lmer(      paste0("ihs_cost_aos ~  treatment*year +", cov_all, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_demo_nopcg <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_demo, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_clini_nopcg <- lmer(    paste0("ihs_cost_aos ~  treatment*year +", cov_clini, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_envi_nopcg <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_envi, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_si_all_expend_nopcg <- lmer(paste0("ihs_cost_aos ~  ihs_cost_lca*year +", cov_all, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_demo_nopcg <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_demo, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_clini_nopcg <- lmer(    paste0("ihs_cost_aos ~  treatment*year +", cov_clini, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_envi_nopcg <- lmer(     paste0("ihs_cost_aos ~  treatment*year +", cov_envi, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_si_all_expend_nopcg <- lmer(paste0("ihs_cost_aos ~  ihs_cost_lca*year +", cov_all, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
 
 # CAM MHI Usage on CM
 model_all_cam_mhi_all_nopcg <- lmer(      paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_all, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_mhi_demo_nopcg <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_demo, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_mhi_clini_nopcg <- lmer(    paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_clini, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
-model_all_cam_mhi_envi_nopcg <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_envi, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 5e5), check.conv.grad = .makeCC("warning", tol = 5e-3)))
-model_all_cam_mhi_all_expend_nopcg <- lmer(paste0("ihs_cost_aos ~  ihs_cost_cam*year +", cov_all, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_mhi_demo_nopcg <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_demo, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_mhi_clini_nopcg <- lmer(    paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_clini, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
+# model_all_cam_mhi_envi_nopcg <- lmer(     paste0("ihs_cost_aos ~  treatment_cam_only*year +", cov_envi, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa",optCtrl = list(maxfun = 5e5), check.conv.grad = .makeCC("warning", tol = 5e-3)))
+# model_all_cam_mhi_all_expend_nopcg <- lmer(paste0("ihs_cost_aos ~  ihs_cost_cam*year +", cov_all, ri), data = df_healthy_open, REML = FALSE, control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 1e5)))
 
 
 ## Plotting
@@ -779,6 +815,8 @@ metrics <- sapply(list(model_all_cam_si_all,
                        model_all_cam_si_all_cancer), 
                   get_performance)
 
+
+summary(model_all_cam_si_all_nopcg)
 # Round the metrics to 3 decimal places
 metrics <- round(metrics, 3)
 # Simplify row names
@@ -876,7 +914,7 @@ cam_mhi <- plot_models(model_all_cam_mhi_all,
                       axis.title = "Estimates",
                       vline.color = "grey50",
                       p.adjust='fdr',
-                      m.labels = c('All individuals','Individuals without PCGs','Multimorbid individuals','Individuals with cancer'),
+                      m.labels = c('All individuals','Individuals without PCG flag','Multimorbid individuals','Individuals with cancer'),
                       # legend.title ='Subgroups',
                       title = "Effect of CAM (MHI) Usage on CM Expenditures"
 )
@@ -909,19 +947,18 @@ cam_mhi <- cam_mhi +
            label = sprintf("ICC: %.3f\nR² marg: %.3f\nR² cond: %.3f", 
                            metrics_mhi["ICC", 1], metrics_mhi["R2_marginal", 1], metrics_mhi["R2_conditional", 1]),
            hjust = 0, vjust = 0, size = 3) +
-  annotate("text", x = 0.5, y = -0.5, color='#4CAE4A',
+  annotate("text", x = 0.5, y = -0.2, color='#4CAE4A',
            label = sprintf("ICC: %.3f\nR² marg: %.3f\nR² cond: %.3f",
                            metrics_mhi["ICC", 2], metrics_mhi["R2_marginal", 2], metrics_mhi["R2_conditional", 2]),
            hjust = 0, vjust = 0, size = 3) +
-  annotate("text", x = 0.5, y = 0.0, color='#377EB8',
+  annotate("text", x = 0.5, y = 0.6, color='#377EB8',
            label = sprintf("ICC: %.3f\nR² marg: %.3f\nR² cond: %.3f",
                            metrics_mhi["ICC", 3], metrics_mhi["R2_marginal", 3], metrics_mhi["R2_conditional", 3]),
            hjust = 0, vjust = 0, size = 3) +
-  annotate("text", x = 0.5, y = 0.5, color='#E4211D',
+  annotate("text", x = 0.5, y = 1.4, color='#E4211D',
            label = sprintf("ICC: %.3f\nR² marg: %.3f\nR² cond: %.3f",
                            metrics_mhi["ICC", 4], metrics_mhi["R2_marginal", 4], metrics_mhi["R2_conditional", 4]),
            hjust = 0, vjust = 0, size = 3)
-
 
 
 
@@ -936,16 +973,106 @@ combined_plot
 ggsave(paste0(result_folder,'Figure 6.png'), combined_plot, width = 13, height = 6.5, units = "in", dpi = 300)
 
 
+# Extract CI and p-values
+
+
+# Extract model data used in the plot
+plot_data <- get_model_data(model_all_cam_si_all, type = "est")
+plot_data
+# Or extract from multiple models
+plot_data_all <- get_model_data(list(model_all_cam_si_all,
+                                     model_all_cam_si_all_nopcg,
+                                     model_all_cam_si_all_multi,
+                                     model_all_cam_si_all_cancer), 
+                                type = "est")
+
+# View the data
+print(plot_data_all)
+
+source("./code/utils.R")
 
 
 
+# Translating Betas back to meaninful expenditures
+library(marginaleffects)
+library(emmeans)
+library(ggeffects)
+library(clubSandwich)
 
 
+# Example usage:
+# Regular model
+
+cam_mhi_all_multi_effects <- calculate_marginal_effects(
+  model = model_all_cam_mhi_all_multi,
+  treatment_var = "treatment_cam_only",
+  is_large = FALSE,
+  cluster_var = "uuid"
+)
+saveRDS(cam_mhi_all_multi_effects, "cam_mhi_all_multi_effects.rds")
 
 
+cam_mhi_all_cancer_effects <- calculate_marginal_effects(
+  model = model_all_cam_mhi_all_cancer,
+  treatment_var = "treatment_cam_only",
+  is_large = FALSE,
+  cluster_var = "uuid"
+)
+saveRDS(cam_mhi_all_cancer_effects, "cam_mhi_all_cancer_effects.rds")
 
 
+cam_si_all_multi_effects <- calculate_marginal_effects(
+  model = model_all_cam_si_all_multi,
+  treatment_var = "treatment",
+  is_large = FALSE,
+  cluster_var = "uuid"
+)
+saveRDS(cam_si_all_multi_effects, "cam_si_all_multi_effects.rds")
 
+
+cam_si_all_cancer_effects <- calculate_marginal_effects(
+  model = model_all_cam_si_all_cancer,
+  treatment_var = "treatment",
+  is_large = FALSE,
+  cluster_var = "uuid"
+)
+saveRDS(cam_si_all_cancer_effects, "cam_si_all_cancer_effects.rds")
+
+# Large models
+cam_mhi_all_nopcg_effects <- calculate_marginal_effects(
+  model = model_all_cam_mhi_all_nopcg,
+  treatment_var = "treatment_cam_only",
+  is_large = TRUE,
+  sample_size = 100000
+)
+saveRDS(cam_mhi_all_nopcg_effects, "cam_mhi_all_nopcg_effects.rds")
+
+
+cam_si_all_nopcg_effects <- calculate_marginal_effects(
+  model = model_all_cam_si_all_nopcg,
+  treatment_var = "treatment",
+  is_large = TRUE,
+  sample_size = 100000
+)
+saveRDS(cam_si_all_nopcg_effects, "cam_si_all_nopcg_effects.rds")
+
+
+cam_mhi_all_effects <- calculate_marginal_effects(
+  model = model_all_cam_mhi_all,
+  treatment_var = "treatment_cam_only",
+  is_large = TRUE,
+  sample_size = 100000
+)
+saveRDS(cam_mhi_all_effects, "cam_mhi_all_effects.rds")
+
+
+cam_si_all_effects <- calculate_marginal_effects(
+  model = model_all_cam_si_all,
+  treatment_var = "treatment",
+  is_large = TRUE,
+  sample_size = 100000
+)
+saveRDS(cam_si_all_effects, "cam_si_all_effects.rds")
 
 
 

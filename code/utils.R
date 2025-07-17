@@ -13,7 +13,7 @@ variable_labels <- c(
   Hypertension_related_PCG = "Hypertension",
   Immune_PCG = "Immune disorders",
   Inflammatory_PCG = "Inflammatory disorders",
-  Mental_PCG = "Mental Health conditions",
+  Mental_PCG = "Mental health conditions",
   Other_PCG = "Other conditions",
   Pain_PCG = "Pain related conditions",
   Parkinson_PCG = "Parkinson's disease",
@@ -24,6 +24,10 @@ variable_labels <- c(
   age_65_79 = "Age 65-79",
   age_80plus = "Age 80+",
   SEX_F = "Female",
+  SEX_FTRUE = "Female",
+  MODEL_MF = "Model - Family doctor",
+  MODEL_HMO = "Model - HMO",
+  MODEL_TEL = "Model - Telemedicine",
   MODEL_MFTRUE = "Model - Family doctor",
   MODEL_HMOTRUE = "Model - HMO",
   MODEL_TELTRUE = "Model - Telemedicine",
@@ -71,7 +75,7 @@ variable_labels <- c(
   'treatment:year' = 'CAM (SI) usage:Year',
   'treatment_lca_cam:year' = 'CAM (MHI or SI) usage:Year',
   mean_no2_std = 'NO2',
-  mean_carnight_std = 'Nighttime Noise',
+  mean_carnight_std = 'Nighttime noise',
   D_MEDIC_B_log = 'Access to primary care medicine',
   ihs_cost_cam = 'CAM - MHI expenditures (IHS)',
   ihs_cost_lca = 'CAM - SI expenditures (IHS)',
@@ -100,23 +104,23 @@ variable_labels <- c(
 
 variable_sections <- list(
   Demographic = c("Age", "Female", "Age 19 - 24", "Age 25 - 34", "Age 35 - 44", "Age 45 - 64", "Age 65 - 79", "Age 80+"),
-  Socioeconomic = c("Swiss SEP 3 - 1st Lowest", "Swiss SEP 3 - 2nd", "Swiss SEP 3 - 3rd", "Swiss SEP 3 - 4th", "Swiss SEP 3 - 5th Highest"),
-  Insurance = c("Deductible - 300 CHF", "Deductible - 500 CHF", "Deductible - 1000 CHF", "Deductible - 1500 CHF", "Deductible - 2000 CHF", "Deductible - 2500 CHF", "Model - Family Doctor", "Model - Health Maintenance Organization", "Model - Telemedicine"),
-  Clinical = c("Asthma", "Diabetes", "Cancer", "Epilepsy", "Glaucoma", "HIV/AIDS", "Heart Disease", "Hypertension", "Immune Disorders", "Inflammatory Disorders", "Mental Health Conditions", "Other Conditions", "Pain Related Conditions", "Parkinson's Disease", "Thyroid Disorders", "Number of PCG flags", "Number of ATC", "Number of months with inpatient med.", "Hospitalisation flag"),
+  Socioeconomic = c("Swiss SEP 3 - 1st lowest quintile", "Swiss SEP 3 - 2nd", "Swiss SEP 3 - 3rd", "Swiss SEP 3 - 4th", "Swiss SEP 3 - 5th highest"),
+  Insurance = c("Deductible - 300 CHF", "Deductible - 500 CHF", "Deductible - 1,000 CHF", "Deductible - 1,500 CHF", "Deductible - 2,000 CHF", "Deductible - 2,500 CHF", "Model - Family doctor", "Model - HMO", "Model - Telemedicine"),
+  Clinical = c("Asthma", "Diabetes", "Cancer", "Epilepsy", "Glaucoma", "HIV/AIDS", "Heart disease", "Hypertension", "Immune disorders", "Inflammatory disorders", "Mental health conditions", "Other conditions", "Pain related conditions", "Parkinson's disease", "Thyroid disorders", "Number of PCG flags", "Number of ATC", "Number of months with inpatient med.", "Hospitalisation flag"),
   Regional = c("Region - French", "Region - German", "Region - Italian", "Access to primary care medicine"),
-  Environmental = c("NO2", "NDVI", "Nighttime Noise", "Peri-urban", "Urban")
+  Environmental = c("NO2", "NDVI", "Nighttime noise", "Peri-urban", "Urban")
 )
 
 scale_and_modify_dataframe <- function(df) {
-  df$NBAGE_std <- scale(df$NBAGE, center = TRUE, scale = TRUE)
-  df$MTFRANCHISECOUV_std <- scale(df$MTFRANCHISECOUV, center = TRUE, scale = TRUE)
-  df$mean_ndvi_std <- scale(df$mean_ndvi, center = TRUE, scale = TRUE)
+  df$NBAGE_std <- as.numeric(scale(df$NBAGE, center = TRUE, scale = TRUE))
+  df$MTFRANCHISECOUV_std <- as.numeric(scale(df$MTFRANCHISECOUV, center = TRUE, scale = TRUE))
+  df$mean_ndvi_std <- as.numeric(scale(df$mean_ndvi, center = TRUE, scale = TRUE))
   df$mean_no2 <- df$mean_no2/10
-  df$mean_no2_std <- scale(df$mean_no2, center = TRUE, scale = TRUE)
-  df$mean_lst_std <- scale(df$mean_lst, center = TRUE, scale = TRUE)
-  df$mean_pm10_std <- scale(df$mean_pm10, center = TRUE, scale = TRUE)
-  df$mean_pm25_std <- scale(df$mean_pm25, center = TRUE, scale = TRUE)
-  df$mean_carnight_std <- scale(df$mean_carnight, center = TRUE, scale = TRUE)
+  df$mean_no2_std <- as.numeric(scale(df$mean_no2, center = TRUE, scale = TRUE))
+  df$mean_lst_std <-as.numeric( scale(df$mean_lst, center = TRUE, scale = TRUE))
+  df$mean_pm10_std <- as.numeric(scale(df$mean_pm10, center = TRUE, scale = TRUE))
+  df$mean_pm25_std <- as.numeric(scale(df$mean_pm25, center = TRUE, scale = TRUE))
+  df$mean_carnight_std <- as.numeric(scale(df$mean_carnight, center = TRUE, scale = TRUE))
   df$E_std <- df$E/1000000
   df$N_std <- df$N/1000000
   
@@ -197,7 +201,37 @@ filter_aos_costs <- function(df) {
 }
 
 # Add more functions as needed...
-
+get_aor_cis <- function(glmer_model) {
+  # Load the lme4 package, which is required for glmer models
+  if (!requireNamespace("lme4", quietly = TRUE)) {
+    stop("The 'lme4' package is required but not installed. Please install it with install.packages('lme4').")
+  }
+  
+  # Get the summary object of the glmer model
+  model_summary <- summary(glmer_model)
+  
+  # Extract fixed effects coefficients and their standard errors
+  # The fixed effects are stored in the 'coefficients' component of the summary,
+  # specifically the 'fixed' part for glmer models.
+  fixed_effects <- as.data.frame(model_summary$coefficients)
+  
+  # Calculate 95% Wald Confidence Intervals on the log-odds scale
+  # The critical value for a 95% CI is approximately 1.96 for large samples.
+  fixed_effects$Lower_LogOdds_CI <- fixed_effects$Estimate - 1.96 * fixed_effects$`Std. Error`
+  fixed_effects$Upper_LogOdds_CI <- fixed_effects$Estimate + 1.96 * fixed_effects$`Std. Error`
+  
+  # Exponentiate the estimates and confidence interval bounds to get Adjusted Odds Ratios (aORs) and their CIs
+  fixed_effects$aOR <- exp(fixed_effects$Estimate)
+  fixed_effects$Lower_aOR_CI <- exp(fixed_effects$Lower_LogOdds_CI)
+  fixed_effects$Upper_aOR_CI <- exp(fixed_effects$Upper_LogOdds_CI)
+  
+  # Select and return only the relevant columns for aOR and its CIs
+  # Also include the original P-value for completeness
+  results_df <- fixed_effects[, c("aOR", "Lower_aOR_CI", "Upper_aOR_CI", "Pr(>|z|)")]
+  colnames(results_df) <- c("aOR", "Lower_CI_aOR", "Upper_CI_aOR", "P_value")
+  
+  return(results_df)
+}
 
 
 make_odds_ratio_table <- function(data, filename, result_folder, title = "Odds Ratio (95%)") {
@@ -494,3 +528,685 @@ create_model_plot <- function(model, data, title, color_palette = "Set2") {
   
   return(p)
 }
+
+library(ggeffects)
+library(dplyr)
+
+# Function to calculate interpretable CAM effects from IHS-transformed models
+# Updated with proper interaction syntax
+calculate_cam_effects <- function(model, treatment_var, interaction_var = NULL, 
+                                  treatment_levels = c(0, 1),
+                                  margin_type = "empirical", 
+                                  group_labels = c("No CAM", "CAM user")) {
+  
+  # Error handling
+  if (missing(model) || missing(treatment_var)) {
+    stop("Both 'model' and 'treatment_var' arguments are required")
+  }
+  
+  # Try to get predictions
+  tryCatch({
+    
+    # Handle interaction vs main effect
+    if (!is.null(interaction_var)) {
+      # For interactions, use proper syntax: c("treatment_var [0,1]", "interaction_var")
+      treatment_term <- paste0(treatment_var, " [", paste(treatment_levels, collapse = ","), "]")
+      terms_vector <- c(treatment_term, interaction_var)
+      
+      # Get predictions on IHS scale
+      margins <- predict_response(model, terms = terms_vector, margin = margin_type)
+      
+    } else {
+      # For main effects only
+      treatment_term <- paste0(treatment_var, " [", paste(treatment_levels, collapse = ","), "]")
+      margins <- predict_response(model, terms = treatment_term, margin = margin_type)
+    }
+    
+    # Back-transform to CHF using sinh()
+    margins$predicted_chf <- sinh(margins$predicted)
+    margins$conf_low_chf <- sinh(margins$conf.low)
+    margins$conf_high_chf <- sinh(margins$conf.high)
+    
+    # Calculate effects based on whether it's an interaction
+    if (!is.null(interaction_var)) {
+      # For interactions, calculate effects by interaction variable levels
+      results <- calculate_interaction_effects(margins, treatment_var, interaction_var, group_labels)
+      summary_text <- create_interaction_summary(results, treatment_var, interaction_var)
+      pct_diff <- NULL  # Not applicable for interactions
+    } else {
+      # For main effects, calculate simple percentage difference
+      if (nrow(margins) >= 2) {
+        pct_diff <- (margins$predicted_chf[2] - margins$predicted_chf[1]) / 
+          margins$predicted_chf[1] * 100
+      } else {
+        pct_diff <- NA
+        warning("Less than 2 predictions available for percentage calculation")
+      }
+      
+      # Create clean results dataframe
+      results <- data.frame(
+        Group = group_labels[1:nrow(margins)],
+        Predicted_CHF = round(margins$predicted_chf, 0),
+        CI_lower = round(margins$conf_low_chf, 0),
+        CI_upper = round(margins$conf_high_chf, 0),
+        CI_text = paste0("(", round(margins$conf_low_chf, 0), "-", 
+                         round(margins$conf_high_chf, 0), ")"),
+        stringsAsFactors = FALSE
+      )
+      
+      # Add percentage difference to results
+      if (!is.na(pct_diff)) {
+        results$Percentage_diff <- c(0, round(pct_diff, 1))
+      }
+      
+      # Create summary text for manuscript
+      if (nrow(results) >= 2) {
+        summary_text <- paste0(
+          "CAM users had predicted annual expenditures of ",
+          results$Predicted_CHF[2], " CHF ", results$CI_text[2], 
+          " compared to ", results$Predicted_CHF[1], " CHF ", results$CI_text[1],
+          " for non-users, representing a ", round(pct_diff, 1), "% difference"
+        )
+      } else {
+        summary_text <- "Could not generate comparison summary"
+      }
+    }
+    
+    # Return list with all results
+    return(list(
+      margins = margins,
+      results = results,
+      percentage_difference = pct_diff,
+      summary_text = summary_text,
+      margin_type = margin_type,
+      interaction = !is.null(interaction_var)
+    ))
+    
+  }, error = function(e) {
+    
+    # If empirical margin fails, try conditional
+    if (margin_type == "empirical") {
+      message("Empirical margin failed, trying conditional margin...")
+      return(calculate_cam_effects(model, treatment_var, interaction_var, 
+                                   treatment_levels, margin_type = "mean_mode", 
+                                   group_labels = group_labels))
+    } else {
+      stop(paste("Failed to calculate predictions:", e$message))
+    }
+  })
+}
+
+# Helper function to calculate interaction effects (FIXED for ggeffects structure)
+calculate_interaction_effects <- function(margins, treatment_var, interaction_var, group_labels) {
+  
+  # Debug: print structure to see what we're working with
+  cat("Margins structure:\n")
+  print(names(margins))
+  
+  # In ggeffects objects with interactions:
+  # - "x" contains the first variable (treatment_cam_only)
+  # - "group" contains the second variable (year)
+  
+  # Extract unique values of the interaction variable from "group" column
+  interaction_values <- unique(margins$group)
+  interaction_values <- sort(interaction_values)  # Sort for chronological order
+  
+  cat("Interaction values found:", interaction_values, "\n")
+  
+  # Initialize results dataframe
+  results <- data.frame()
+  
+  for (val in interaction_values) {
+    cat("Processing interaction level:", val, "\n")
+    
+    # Get predictions for this interaction level (year)
+    subset_data <- margins[margins$group == val, ]
+    
+    cat("Subset data rows:", nrow(subset_data), "\n")
+    
+    if (nrow(subset_data) >= 2) {
+      # Ensure we have the right order (x = 0, then 1 for treatment)
+      subset_data <- subset_data[order(subset_data$x), ]
+      
+      cat("Treatment values in subset:", subset_data$x, "\n")
+      cat("Predicted CHF values:", subset_data$predicted_chf, "\n")
+      
+      # Calculate percentage difference
+      pct_diff <- (subset_data$predicted_chf[2] - subset_data$predicted_chf[1]) / 
+        subset_data$predicted_chf[1] * 100
+      
+      # Calculate absolute difference
+      abs_diff <- subset_data$predicted_chf[2] - subset_data$predicted_chf[1]
+      
+      # Create results for this interaction level
+      level_results <- data.frame(
+        Year = val,
+        No_CAM_CHF = round(subset_data$predicted_chf[1], 0),
+        No_CAM_CI = paste0("(", round(subset_data$conf_low_chf[1], 0), "-", 
+                           round(subset_data$conf_high_chf[1], 0), ")"),
+        CAM_CHF = round(subset_data$predicted_chf[2], 0),
+        CAM_CI = paste0("(", round(subset_data$conf_low_chf[2], 0), "-", 
+                        round(subset_data$conf_high_chf[2], 0), ")"),
+        Absolute_diff_CHF = round(abs_diff, 0),
+        Percentage_diff = round(pct_diff, 1),
+        stringsAsFactors = FALSE
+      )
+      
+      results <- rbind(results, level_results)
+    } else {
+      cat("Not enough data for interaction level:", val, "\n")
+    }
+  }
+  
+  cat("Final results rows:", nrow(results), "\n")
+  return(results)
+}
+
+# Helper function to create interaction summary (updated)
+create_interaction_summary <- function(results, treatment_var, interaction_var) {
+  
+  if (nrow(results) == 0) {
+    return("Could not generate interaction summary")
+  }
+  
+  # Find the range of interaction variable
+  min_val <- min(results$Year)
+  max_val <- max(results$Year)
+  
+  # Get effects at start and end
+  start_effect <- results$Percentage_diff[results$Year == min_val]
+  end_effect <- results$Percentage_diff[results$Year == max_val]
+  
+  # Get absolute differences
+  start_abs <- results$Absolute_diff_CHF[results$Year == min_val]
+  end_abs <- results$Absolute_diff_CHF[results$Year == max_val]
+  
+  # Calculate trends
+  pct_trend <- end_effect - start_effect
+  abs_trend <- end_abs - start_abs
+  
+  # Create comprehensive summary
+  summary_text <- paste0(
+    "CAM treatment effect changes over time: ",
+    "In ", min_val, ", CAM users had ", start_effect, "% higher expenditures (+", start_abs, " CHF); ",
+    "In ", max_val, ", CAM users had ", end_effect, "% higher expenditures (+", end_abs, " CHF). ",
+    "The treatment effect ", ifelse(pct_trend > 0, "increased", "decreased"), 
+    " by ", abs(round(pct_trend, 1)), " percentage points (", 
+    ifelse(abs_trend > 0, "+", ""), round(abs_trend, 0), " CHF) over the study period, ",
+    "indicating ", ifelse(pct_trend < 0, "convergence", "divergence"), 
+    " between CAM users and non-users."
+  )
+  
+  return(summary_text)
+}
+
+# Specialized function for your CAM interaction models
+calculate_cam_interaction_effects <- function(model, treatment_var = 'treatment_cam_only', margin_type = 'empirical', subgroup_name = "All individuals") {
+  
+  # For CAM models with year interactions
+  effects <- calculate_cam_effects(
+    model = model,
+    treatment_var = treatment_var,
+    interaction_var = "year",
+    treatment_levels = c(0, 1),
+    margin_type = margin_type
+  )
+  
+  # Add subgroup info
+  effects$subgroup <- subgroup_name
+  
+  return(effects)
+}
+
+# Function to create publication-ready interaction table
+create_interaction_table <- function(model_list, model_names, treatment_var = "treatment_cam_only", 
+                                     interaction_var = "year") {
+  
+  all_results <- list()
+  
+  for (i in seq_along(model_list)) {
+    cat("Processing", model_names[i], "...\n")
+    
+    effects <- calculate_cam_effects(
+      model = model_list[[i]],
+      treatment_var = treatment_var,
+      interaction_var = interaction_var,
+      margin_type = "empirical"
+    )
+    
+    # Add subgroup column
+    effects$results$Subgroup <- model_names[i]
+    all_results[[i]] <- effects$results
+  }
+  
+  # Combine all results
+  combined_results <- do.call(rbind, all_results)
+  
+  # Reorder columns
+  combined_results <- combined_results[, c("Subgroup", "Year", "No_CAM_CHF", "No_CAM_CI", 
+                                           "CAM_CHF", "CAM_CI", "Absolute_diff_CHF", 
+                                           "Percentage_diff")]
+  
+  return(combined_results)
+}
+
+
+
+calculate_marginal_effects <- function(model, 
+                                       treatment_var, 
+                                       is_large = FALSE, 
+                                       sample_size = 100000,
+                                       years = 1:5) {
+  
+  # Load required libraries
+  library(marginaleffects)
+  library(dplyr)
+  
+  # Suppress marginaleffects warnings
+  options(marginaleffects_safe = FALSE)
+  
+  if (is_large) {
+    # Large model approach with sampling
+    cat("Using large model approach with sampling...\n")
+    
+    # Get model frame and sample
+    model_frame <- model@frame
+    sampled_data <- model_frame[sample(1:nrow(model_frame), 
+                                       min(sample_size, nrow(model_frame))), ]
+    
+    cat("Getting predictions...\n")
+    
+    # Predictions for large models
+    predictions <- avg_predictions(
+      model,
+      variables = treatment_var,
+      by = "year",
+      newdata = sampled_data,
+      re.form = NA
+      
+    )
+    cat("Getting effects...\n")
+    # Effects for large models
+    effects <- avg_comparisons(
+      model,
+      variables = treatment_var,
+      by = "year",
+      newdata = sampled_data,
+      re.form = NA  # Ignore random effects for computational efficiency
+    )
+    
+  } else {
+    # Regular model approach
+    cat("Using regular model approach...\n")
+    
+    # Predictions for regular models
+    predictions <- avg_predictions(
+      model,
+      variables = setNames(list(c(0, 1)), treatment_var),
+      by = "year",
+
+    )
+    
+    # Effects for regular models
+    effects <- avg_comparisons(
+      model,
+      variables = treatment_var,
+      by = "year",
+    )
+  }
+  
+  
+  # Ensure effects are properly ordered by year
+  effects <- effects %>% arrange(year)
+  
+  # Create results dataframe
+  results <- data.frame(
+    year = years,
+    baseline_ihs = predictions$estimate[1:length(years)],
+    effect_ihs = effects$estimate[1:length(years)],
+    effect_se = effects$std.error[1:length(years)],
+    effect_pvalue = effects$p.value[1:length(years)],
+    effect_conf_low = effects$conf.low[1:length(years)],
+    effect_conf_high = effects$conf.high[1:length(years)]
+  )
+  
+  # Calculate treated values
+  results$treated_ihs <- results$baseline_ihs + results$effect_ihs
+  
+  # Transform to CHF using inverse hyperbolic sine
+  results$baseline_chf <- sinh(results$baseline_ihs)
+  results$treated_chf <- sinh(results$treated_ihs)
+  results$effect_chf <- results$treated_chf - results$baseline_chf
+  
+  # Calculate percentage change
+  results$pct_change <- (results$effect_chf / results$baseline_chf) * 100
+  
+  # Calculate reduction in percentage points between first and last year
+  if (length(years) >= 2) {
+    pct_change_first <- results$pct_change[1]
+    pct_change_last <- results$pct_change[length(years)]
+    reduction_pct_points <- pct_change_first - pct_change_last
+    
+    # Add summary statistics
+    summary_stats <- list(
+      pct_change_year1 = pct_change_first,
+      pct_change_year_last = pct_change_last,
+      reduction_pct_points = reduction_pct_points,
+      avg_effect_chf = mean(results$effect_chf),
+      total_years = length(years)
+    )
+  } else {
+    summary_stats <- list(
+      avg_effect_chf = mean(results$effect_chf),
+      total_years = length(years)
+    )
+  }
+  
+  # Return both detailed results and summary
+  return(list(
+    results = results,
+    summary = summary_stats,
+    model_type = ifelse(is_large, "large", "regular"),
+    treatment_variable = treatment_var
+  ))
+}
+
+# calculate_marginal_effects_multiple <- function(model, 
+#                                                 treatment_vars, 
+#                                                 is_large = FALSE, 
+#                                                 sample_size = 100000) {
+#   
+#   # Load required libraries
+#   library(marginaleffects)
+#   library(dplyr)
+#   
+#   # Suppress marginaleffects warnings
+#   options(marginaleffects_safe = FALSE)
+#   
+#   # Ensure treatment_vars is a vector
+#   if (!is.vector(treatment_vars)) {
+#     stop("treatment_vars must be a vector of variable names")
+#   }
+#   
+#   # Function to get baseline value for each variable based on its type
+#   get_baseline_value <- function(var_name, model_data) {
+#     var_data <- model_data[[var_name]]
+#     
+#     if (is.factor(var_data)) {
+#       # For factors, use the first level (reference level)
+#       return(levels(var_data)[1])
+#     } else if (is.logical(var_data)) {
+#       # For logical variables, use FALSE as baseline
+#       return(FALSE)
+#     } else if (is.numeric(var_data)) {
+#       # For numeric variables, use 0 as baseline
+#       return(0)
+#     } else {
+#       # For other types, try 0 but warn user
+#       warning(paste("Unknown variable type for", var_name, ". Using 0 as baseline."))
+#       return(0)
+#     }
+#   }
+#   
+#   # Get model frame for variable type detection
+#   model_frame <- model@frame
+#   
+#   # Get baseline values for each variable based on its type
+#   baseline_values <- setNames(
+#     lapply(treatment_vars, function(x) get_baseline_value(x, model_frame)), 
+#     treatment_vars
+#   )
+#   
+#   # Print baseline values for debugging
+#   cat("Baseline values being used:\n")
+#   print(baseline_values)
+#   
+#   if (is_large) {
+#     # Large model approach with sampling
+#     cat("Using large model approach with sampling...\n")
+#     
+#     # Sample data
+#     sampled_data <- model_frame[sample(1:nrow(model_frame), 
+#                                        min(sample_size, nrow(model_frame))), ]
+#     
+#     cat("Getting predictions...\n")
+#     
+#     # Get baseline predictions for all variables at once
+#     baseline_predictions <- avg_predictions(
+#       model,
+#       variables = baseline_values,
+#       newdata = sampled_data,
+#       re.form = NA
+#     )
+#     
+#     cat("Getting effects...\n")
+#     # Effects for large models - get all variables at once
+#     effects <- avg_comparisons(
+#       model,
+#       variables = treatment_vars,
+#       newdata = sampled_data,
+#       re.form = NA  # Ignore random effects for computational efficiency
+#     )
+#     
+#   } else {
+#     # Regular model approach
+#     cat("Using regular model approach...\n")
+#     
+# 
+#     # Get baseline predictions for all variables at once
+#     baseline_predictions <- avg_predictions(
+#       model,
+#       variables = baseline_values
+#     )
+#     
+#     # Effects for regular models - get all variables at once
+#     effects <- avg_comparisons(
+#       model,
+#       variables = treatment_vars
+#     )
+#   }
+#   
+#   # Create results dataframe - ensure proper matching of variables
+#   # Match effects to treatment variables
+#   effects_matched <- effects[match(treatment_vars, effects$term), ]
+#   
+#   results <- data.frame(
+#     variable = treatment_vars,
+#     baseline_ihs = baseline_predictions$estimate,
+#     effect_ihs = effects_matched$estimate,
+#     effect_se = effects_matched$std.error,
+#     effect_pvalue = effects_matched$p.value,
+#     effect_conf_low = effects_matched$conf.low,
+#     effect_conf_high = effects_matched$conf.high,
+#     stringsAsFactors = FALSE
+#   )
+#   
+#   # Calculate treated values
+#   results$treated_ihs <- results$baseline_ihs + results$effect_ihs
+#   
+#   # Transform to CHF using inverse hyperbolic sine
+#   results$baseline_chf <- sinh(results$baseline_ihs)
+#   results$treated_chf <- sinh(results$treated_ihs)
+#   results$effect_chf <- results$treated_chf - results$baseline_chf
+#   
+#   # Calculate percentage change
+#   results$pct_change <- (results$effect_chf / results$baseline_chf) * 100
+#   
+#   # Create summary statistics
+#   summary_stats <- list(
+#     n_variables = length(treatment_vars),
+#     avg_effect_chf = mean(results$effect_chf),
+#     avg_pct_change = mean(results$pct_change),
+#     variables = treatment_vars,
+#     baseline_values = baseline_values,
+#     model_type = ifelse(is_large, "large", "regular")
+#   )
+#   
+#   # Return both detailed results and summary
+#   return(list(
+#     results = results,
+#     summary = summary_stats,
+#     baseline_values = baseline_values,
+#     model_type = ifelse(is_large, "large", "regular"),
+#     treatment_variables = treatment_vars
+#   ))
+# }
+
+calculate_marginal_effects_multiple <- function(model, 
+                                                treatment_vars, 
+                                                is_large = FALSE, 
+                                                cluster_var = "uuid",
+                                                sample_size = 100000) {
+  
+  # Load required libraries
+  library(marginaleffects)
+  library(dplyr)
+  
+  # Suppress marginaleffects warnings
+  options(marginaleffects_safe = FALSE)
+  
+  # Ensure treatment_vars is a vector
+  if (!is.vector(treatment_vars)) {
+    stop("treatment_vars must be a vector of variable names")
+  }
+  
+  # Function to get baseline value for each variable based on its type
+  get_baseline_value <- function(var_name, model_data) {
+    var_data <- model_data[[var_name]]
+    
+    if (is.factor(var_data)) {
+      # For factors, use the first level (reference level)
+      return(levels(var_data)[1])
+    } else if (is.logical(var_data)) {
+      # For logical variables, use FALSE as baseline
+      return(FALSE)
+    } else if (is.numeric(var_data)) {
+      # For numeric variables, use 0 as baseline
+      return(0)
+    } else if (is.character(var_data)) {
+      # For character variables, use the first unique value
+      return(unique(var_data)[1])
+    } else {
+      # Check if it's a binary numeric variable (0/1)
+      unique_vals <- unique(var_data)
+      if (length(unique_vals) == 2 && all(unique_vals %in% c(0, 1))) {
+        return(0)
+      }
+      # For other types, try 0 but warn user
+      warning(paste("Unknown variable type for", var_name, ". Variable class:", class(var_data)[1], ". Using 0 as baseline."))
+      return(0)
+    }
+  }
+  
+  # Get model frame for variable type detection
+  model_frame <- model@frame
+  
+  # Get baseline values for each variable based on its type
+  baseline_values <- setNames(
+    lapply(treatment_vars, function(x) get_baseline_value(x, model_frame)), 
+    treatment_vars
+  )
+  
+  # Print baseline values for debugging
+  cat("Baseline values being used:\n")
+  print(baseline_values)
+  
+  if (is_large) {
+    # Large model approach with sampling
+    cat("Using large model approach with sampling...\n")
+    
+    # Sample data
+    sampled_data <- model_frame[sample(1:nrow(model_frame), 
+                                       min(sample_size, nrow(model_frame))), ]
+    
+    cat("Getting predictions...\n")
+    
+    # Get baseline predictions for all variables at once
+    baseline_predictions <- avg_predictions(
+      model,
+      variables = baseline_values,
+      newdata = sampled_data,
+      re.form = NA
+    )
+    
+    cat("Getting effects...\n")
+    # Effects for large models - get all variables at once
+    effects <- avg_comparisons(
+      model,
+      variables = treatment_vars,
+      newdata = sampled_data,
+      re.form = NA  # Ignore random effects for computational efficiency
+    )
+    
+  } else {
+    # Regular model approach
+    cat("Using regular model approach...\n")
+    
+    # Create vcov formula
+    vcov_formula <- as.formula(paste0("~", cluster_var))
+    
+    # Get baseline predictions for all variables at once
+    baseline_predictions <- avg_predictions(
+      model,
+      variables = baseline_values
+    )
+    
+    # Effects for regular models - get all variables at once
+    effects <- avg_comparisons(
+      model,
+      variables = treatment_vars,
+      vcov = vcov_formula
+    )
+  }
+  
+  # Create results dataframe - ensure proper matching of variables
+  # Match effects to treatment variables
+  effects_matched <- effects[match(treatment_vars, effects$term), ]
+  
+  results <- data.frame(
+    variable = treatment_vars,
+    baseline_ihs = baseline_predictions$estimate,
+    effect_ihs = effects_matched$estimate,
+    effect_se = effects_matched$std.error,
+    effect_pvalue = effects_matched$p.value,
+    effect_conf_low = effects_matched$conf.low,
+    effect_conf_high = effects_matched$conf.high,
+    stringsAsFactors = FALSE
+  )
+  
+  # Print baseline values for debugging
+  cat("Baseline values being used:\n")
+  print(baseline_values)
+  
+  # Calculate treated values
+  results$treated_ihs <- results$baseline_ihs + results$effect_ihs
+  
+  # Transform to CHF using inverse hyperbolic sine
+  results$baseline_chf <- sinh(results$baseline_ihs)
+  results$treated_chf <- sinh(results$treated_ihs)
+  results$effect_chf <- results$treated_chf - results$baseline_chf
+  
+  # Calculate percentage change
+  results$pct_change <- (results$effect_chf / results$baseline_chf) * 100
+  
+  # Create summary statistics
+  summary_stats <- list(
+    n_variables = length(treatment_vars),
+    avg_effect_chf = mean(results$effect_chf),
+    avg_pct_change = mean(results$pct_change),
+    variables = treatment_vars,
+    baseline_values = baseline_values,
+    model_type = ifelse(is_large, "large", "regular")
+  )
+  
+  # Return both detailed results and summary
+  return(list(
+    results = results,
+    summary = summary_stats,
+    baseline_values = baseline_values,
+    model_type = ifelse(is_large, "large", "regular"),
+    treatment_variables = treatment_vars
+  ))
+}
+
+
