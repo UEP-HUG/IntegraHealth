@@ -28,7 +28,7 @@ result_folder <- './results/'
 data_folder <- '../SanteIntegra/Data/'
 # Load data
 ## Full dataset (5 years)
-# df <- read_parquet(file.path(data_folder, "processed/df_treated_5years.parquet.gzip"))
+df <- read_parquet(file.path(data_folder, "processed/df_treated_5years.parquet.gzip"))
 ## Full dataset (open cohort)
 df_open <- read_parquet(file.path(data_folder, "processed/df_treated_open.parquet.gzip"))
 ## Subsets (5 years)
@@ -47,7 +47,7 @@ df_open <- scale_and_modify_dataframe(df_open)
 
 logical_cols <- c("SEX_F", "MODEL_MF", "MODEL_HMO", "MODEL_TEL")
 df_open[logical_cols] <- lapply(df_open[logical_cols], as.factor)
-# df[logical_cols] <- lapply(df[logical_cols], as.factor)
+df[logical_cols] <- lapply(df[logical_cols], as.factor)
 
 
 
@@ -65,7 +65,7 @@ df_healthy_open[logical_cols] <- lapply(df_healthy_open[logical_cols], as.factor
 df_cancer_open[logical_cols] <- lapply(df_cancer_open[logical_cols], as.factor)
 
 # Filter data for specific conditions
-# df_aos_costs <- filter_aos_costs(df)
+df_aos_costs <- filter_aos_costs(df)
 # df_aos_costs_v2 <- df[df$PRESTATIONS_BRUTES_AOS > 0, ]
 
 # df_aos_costs_nonull <- df[df$PRESTATIONS_BRUTES_AOS > 0, ]
@@ -999,6 +999,10 @@ library(emmeans)
 library(ggeffects)
 library(clubSandwich)
 
+get_beta_cis(model_all_cam_mhi_all_cancer)
+get_beta_cis(model_all_cam_mhi_all_multi)
+get_beta_cis(model_all_cam_mhi_all)
+get_beta_cis(model_all_cam_mhi_all_nopcg)
 
 # Example usage:
 # Regular model
@@ -1006,8 +1010,7 @@ library(clubSandwich)
 cam_mhi_all_multi_effects <- calculate_marginal_effects(
   model = model_all_cam_mhi_all_multi,
   treatment_var = "treatment_cam_only",
-  is_large = FALSE,
-  cluster_var = "uuid"
+  is_large = FALSE
 )
 saveRDS(cam_mhi_all_multi_effects, "cam_mhi_all_multi_effects.rds")
 
@@ -1015,17 +1018,16 @@ saveRDS(cam_mhi_all_multi_effects, "cam_mhi_all_multi_effects.rds")
 cam_mhi_all_cancer_effects <- calculate_marginal_effects(
   model = model_all_cam_mhi_all_cancer,
   treatment_var = "treatment_cam_only",
-  is_large = FALSE,
-  cluster_var = "uuid"
+  is_large = FALSE
 )
+
 saveRDS(cam_mhi_all_cancer_effects, "cam_mhi_all_cancer_effects.rds")
 
 
 cam_si_all_multi_effects <- calculate_marginal_effects(
   model = model_all_cam_si_all_multi,
   treatment_var = "treatment",
-  is_large = FALSE,
-  cluster_var = "uuid"
+  is_large = FALSE
 )
 saveRDS(cam_si_all_multi_effects, "cam_si_all_multi_effects.rds")
 
@@ -1033,9 +1035,9 @@ saveRDS(cam_si_all_multi_effects, "cam_si_all_multi_effects.rds")
 cam_si_all_cancer_effects <- calculate_marginal_effects(
   model = model_all_cam_si_all_cancer,
   treatment_var = "treatment",
-  is_large = FALSE,
-  cluster_var = "uuid"
+  is_large = FALSE
 )
+
 saveRDS(cam_si_all_cancer_effects, "cam_si_all_cancer_effects.rds")
 
 # Large models
@@ -1045,6 +1047,7 @@ cam_mhi_all_nopcg_effects <- calculate_marginal_effects(
   is_large = TRUE,
   sample_size = 100000
 )
+cam_mhi_all_nopcg_effects
 saveRDS(cam_mhi_all_nopcg_effects, "cam_mhi_all_nopcg_effects.rds")
 
 
@@ -1066,6 +1069,16 @@ cam_mhi_all_effects <- calculate_marginal_effects(
 saveRDS(cam_mhi_all_effects, "cam_mhi_all_effects.rds")
 
 
+treatment_vars <- c('treatment_cam_only')
+model_all_cam_mhi_all_effects <- calculate_marginal_effects_multiple(
+  model = model_all_cam_mhi_all,
+  treatment_vars = treatment_vars,
+  is_large = TRUE,
+  sample_size = 100000
+)
+model_all_cam_mhi_all_effects
+
+
 cam_si_all_effects <- calculate_marginal_effects(
   model = model_all_cam_si_all,
   treatment_var = "treatment",
@@ -1074,5 +1087,35 @@ cam_si_all_effects <- calculate_marginal_effects(
 )
 saveRDS(cam_si_all_effects, "cam_si_all_effects.rds")
 
+source('./code/utils.R')
+## Create AMEs table
+
+ame_table <- create_ame_table(
+  cam_si_all_effects,
+  cam_si_all_nopcg_effects,
+  cam_si_all_multi_effects,
+  cam_si_all_cancer_effects,
+  cam_mhi_all_effects,
+  cam_mhi_all_nopcg_effects,
+  cam_mhi_all_multi_effects,
+  cam_mhi_all_cancer_effects
+)
+
+ft <- flextable(ame_table) %>%
+  theme_vanilla()%>%
+  autofit() # Add autofit here
+ft
+save_as_image(ft, "./results/marginal_effects_table.png", 
+              width = 18, height = 6, res = 300)
 
 
+treatment_vars <- c('treatment')
+calculate_marginal_effects_multiple(
+  model = model_all_cam_si_all_multi,
+  treatment_vars = treatment_vars,
+  is_large = TRUE,
+  sample_size = 100000
+)
+cam_mhi_all_effects
+
+get_beta_cis(model_all_cam_si_all_cancer)

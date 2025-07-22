@@ -233,6 +233,43 @@ get_aor_cis <- function(glmer_model) {
   return(results_df)
 }
 
+# Make sure lmerTest is loaded in your R session
+# library(lmerTest) # Run this line before fitting your lmer model
+
+get_beta_cis <- function(lmer_model) {
+  if (!requireNamespace("lme4", quietly = TRUE)) {
+    stop("The 'lme4' package is required but not installed. Please install it with install.packages('lme4').")
+  }
+  # Make sure lmerTest is loaded or attached before running summary,
+  # otherwise Pr(>|t|) won't be in the summary output.
+  if (!requireNamespace("lmerTest", quietly = TRUE)) {
+    message("Warning: lmerTest package not loaded. P-values might be based on Z-statistics without degrees of freedom correction.")
+  }
+  
+  model_summary <- summary(lmer_model)
+  fixed_effects <- as.data.frame(model_summary$coefficients)
+  
+  fixed_effects$Lower_Beta_CI <- fixed_effects$Estimate - 1.96 * fixed_effects$`Std. Error`
+  fixed_effects$Upper_Beta_CI <- fixed_effects$Estimate + 1.96 * fixed_effects$`Std. Error`
+  
+  # Assuming lmerTest is loaded and provides 'Pr(>|t|)'
+  if ("Pr(>|t|)" %in% colnames(fixed_effects)) {
+    results_df <- fixed_effects[, c("Estimate", "Lower_Beta_CI", "Upper_Beta_CI", "Pr(>|t|)")]
+  } else if ("Pr(>|z|)" %in% colnames(fixed_effects)) { # Fallback for base lme4 (less common for lmer)
+    results_df <- fixed_effects[, c("Estimate", "Lower_Beta_CI", "Upper_Beta_CI", "Pr(>|z|)")]
+  } else { # If neither is found, calculate from t value (less ideal without df)
+    warning("P-value column not found. Calculating approximate P-values from t-value assuming infinite degrees of freedom.")
+    # You might need to add a small value to avoid division by zero if t value is exactly 0
+    fixed_effects$P_value_approx <- 2 * pnorm(-abs(fixed_effects$`t value`))
+    results_df <- fixed_effects[, c("Estimate", "Lower_Beta_CI", "Upper_Beta_CI", "P_value_approx")]
+  }
+  
+  colnames(results_df) <- c("Beta", "Lower_CI_Beta", "Upper_CI_Beta", "P_value")
+  return(results_df)
+}
+
+# Now try running your code again:
+# get_beta_cis(model_all_cam_mhi_all_multi)
 
 make_odds_ratio_table <- function(data, filename, result_folder, title = "Odds Ratio (95%)") {
   png(file.path(result_folder, filename), width = 10, height = 12, units = 'in', res = 400)
@@ -1207,6 +1244,243 @@ calculate_marginal_effects_multiple <- function(model,
     model_type = ifelse(is_large, "large", "regular"),
     treatment_variables = treatment_vars
   ))
+}
+
+
+create_publication_table <- function(cam_si_all_effects,
+                                     cam_si_all_nopcg_effects,
+                                     cam_si_all_multi_effects,
+                                     cam_si_all_cancer_effects,
+                                     cam_mhi_all_effects,
+                                     cam_mhi_all_nopcg_effects,
+                                     cam_mhi_all_multi_effects,
+                                     cam_mhi_all_cancer_effects) {
+  
+  library(dplyr)
+  
+  # Create a list of all results with meaningful names
+  results_list <- list(
+    "CAM vs SI - All" = cam_si_all_effects$results,
+    "CAM vs SI - No PCG" = cam_si_all_nopcg_effects$results,
+    "CAM vs SI - Multimorbidity" = cam_si_all_multi_effects$results,
+    "CAM vs SI - Cancer" = cam_si_all_cancer_effects$results,
+    "CAM vs MHI - All" = cam_mhi_all_effects$results,
+    "CAM vs MHI - No PCG" = cam_mhi_all_nopcg_effects$results,
+    "CAM vs MHI - Multimorbidity" = cam_mhi_all_multi_effects$results,
+    "CAM vs MHI - Cancer" = cam_mhi_all_cancer_effects$results
+  )
+  
+  # Combine all results into one dataframe
+  combined_results <- bind_rows(
+    lapply(names(results_list), function(name) {
+      results_list[[name]] %>%
+        mutate(Analysis = name) %>%
+        select(Analysis, everything())
+    })
+  )
+  
+  # Select most relevant columns for publication
+  publication_table <- combined_results %>%
+    select(
+      Analysis,
+      Year = year,
+      `Effect (CHF)` = effect_chf,
+      `SE` = effect_se,
+      `95% CI Lower` = effect_conf_low,
+      `95% CI Upper` = effect_conf_high,
+      `P-value` = effect_pvalue,
+      `% Change` = pct_change
+    ) %>%
+    mutate(
+      # Round to appropriate decimal places
+      `Effect (CHF)` = round(`Effect (CHF)`, 1),
+      `SE` = round(`SE`, 4),
+      `95% CI Lower` = round(`95% CI Lower`, 4),
+      `95% CI Upper` = round(`95% CI Upper`, 4),
+      `P-value` = ifelse(`P-value` < 0.001, "<0.001", 
+                         ifelse(`P-value` < 0.01, sprintf("%.3f", `P-value`),
+                                sprintf("%.2f", `P-value`))),
+      `% Change` = round(`% Change`, 2)
+    ) %>%
+    # Create a combined CI column
+    mutate(
+      `95% CI` = paste0("[", `95% CI Lower`, ", ", `95% CI Upper`, "]")
+    ) %>%
+    select(-`95% CI Lower`, -`95% CI Upper`) %>%
+    # Reorder columns
+    select(Analysis, Year, `Effect (CHF)`, `95% CI`, `SE`, `P-value`, `% Change`)
+  
+  return(publication_table)
+}
+
+# Alternative compact version for space-constrained publications
+create_compact_publication_table <- function(cam_si_all_effects,
+                                             cam_si_all_nopcg_effects,
+                                             cam_si_all_multi_effects,
+                                             cam_si_all_cancer_effects,
+                                             cam_mhi_all_effects,
+                                             cam_mhi_all_nopcg_effects,
+                                             cam_mhi_all_multi_effects,
+                                             cam_mhi_all_cancer_effects) {
+  
+  library(dplyr)
+  
+  # Create a list of all results with meaningful names
+  results_list <- list(
+    "CAM vs SI - All" = cam_si_all_effects$results,
+    "CAM vs SI - No PCG" = cam_si_all_nopcg_effects$results,
+    "CAM vs SI - Multimorbidity" = cam_si_all_multi_effects$results,
+    "CAM vs SI - Cancer" = cam_si_all_cancer_effects$results,
+    "CAM vs MHI - All" = cam_mhi_all_effects$results,
+    "CAM vs MHI - No PCG" = cam_mhi_all_nopcg_effects$results,
+    "CAM vs MHI - Multimorbidity" = cam_mhi_all_multi_effects$results,
+    "CAM vs MHI - Cancer" = cam_mhi_all_cancer_effects$results
+  )
+  
+  # Combine all results into one dataframe
+  combined_results <- bind_rows(
+    lapply(names(results_list), function(name) {
+      results_list[[name]] %>%
+        mutate(Analysis = name) %>%
+        select(Analysis, everything())
+    })
+  )
+  
+  # Create compact version with effect and CI combined
+  compact_table <- combined_results %>%
+    select(
+      Analysis,
+      Year = year,
+      effect_chf,
+      effect_conf_low,
+      effect_conf_high,
+      effect_pvalue,
+      pct_change
+    ) %>%
+    mutate(
+      # Create combined effect estimate with CI
+      `Effect (CHF) [95% CI]` = paste0(
+        round(effect_chf, 1), 
+        " [", 
+        round(effect_conf_low, 1), 
+        ", ", 
+        round(effect_conf_high, 1), 
+        "]"
+      ),
+      `P-value` = ifelse(effect_pvalue < 0.001, "<0.001", 
+                         ifelse(effect_pvalue < 0.01, sprintf("%.3f", effect_pvalue),
+                                sprintf("%.2f", effect_pvalue))),
+      `% Change` = paste0(sprintf("%.1f", pct_change), "%")
+    ) %>%
+    select(Analysis, Year, `Effect (CHF) [95% CI]`, `P-value`, `% Change`)
+  
+  return(compact_table)
+}
+
+# Usage examples:
+# 
+# # Full publication table
+# pub_table <- create_publication_table(
+#   cam_si_all_effects,
+#   cam_si_all_nopcg_effects,
+#   cam_si_all_multi_effects,
+#   cam_si_all_cancer_effects,
+#   cam_mhi_all_effects,
+#   cam_mhi_all_nopcg_effects,
+#   cam_mhi_all_multi_effects,
+#   cam_mhi_all_cancer_effects
+# )
+# 
+# # Compact version for space-constrained publications
+# compact_table <- create_compact_publication_table(
+#   cam_si_all_effects,
+#   cam_si_all_nopcg_effects,
+#   cam_si_all_multi_effects,
+#   cam_si_all_cancer_effects,
+#   cam_mhi_all_effects,
+#   cam_mhi_all_nopcg_effects,
+#   cam_mhi_all_multi_effects,
+#   cam_mhi_all_cancer_effects
+# )
+# 
+# # View results
+# print(pub_table)
+# 
+# # Save to CSV
+# write.csv(pub_table, "marginal_effects_publication_table.csv", row.names = FALSE)
+# 
+# # For LaTeX/Word tables, you might want to use:
+# # library(kableExtra)
+# # kable(pub_table, format = "latex") %>%
+# #   kable_styling(bootstrap_options = "striped")
+
+# Helper function to create a summary table (average across years)
+create_ame_table <- function(cam_si_all_effects,
+                             cam_si_all_nopcg_effects,
+                             cam_si_all_multi_effects,
+                             cam_si_all_cancer_effects,
+                             cam_mhi_all_effects,
+                             cam_mhi_all_nopcg_effects,
+                             cam_mhi_all_multi_effects,
+                             cam_mhi_all_cancer_effects) {
+  
+  library(dplyr)
+  
+  # Create a list of all results with meaningful names (MHI first, then SI)
+  results_list <- list(
+    "CAM (MHI) - All" = cam_mhi_all_effects$results,
+    "CAM (MHI) - No PCG" = cam_mhi_all_nopcg_effects$results,
+    "CAM (MHI) - Multimorbidity" = cam_mhi_all_multi_effects$results,
+    "CAM (MHI) - Cancer" = cam_mhi_all_cancer_effects$results,
+    "CAM (SI) - All" = cam_si_all_effects$results,
+    "CAM (SI) - No PCG" = cam_si_all_nopcg_effects$results,
+    "CAM (SI) - Multimorbidity" = cam_si_all_multi_effects$results,
+    "CAM (SI) - Cancer" = cam_si_all_cancer_effects$results
+  )
+  
+  # Combine all results into one dataframe
+  combined_results <- bind_rows(
+    lapply(names(results_list), function(name) {
+      results_list[[name]] %>%
+        mutate(Analysis = name) %>%
+        select(Analysis, everything())
+    })
+  )
+  
+  # Select most relevant columns for publication
+  publication_table <- combined_results %>%
+    select(
+      Analysis,
+      Year = year,
+      `Effect (IHS)` = effect_ihs,
+      `Effect (CHF)` = effect_chf,
+      `SE` = effect_se,
+      `95% CI Lower` = effect_conf_low,
+      `95% CI Upper` = effect_conf_high,
+      `P-value` = effect_pvalue,
+      `% Change` = pct_change
+    ) %>%
+    mutate(
+      # Round to appropriate decimal places
+      `Effect (IHS)` = round(`Effect (IHS)`, 4),
+      `Effect (CHF)` = round(`Effect (CHF)`, 1),
+      `SE` = round(`SE`, 4),
+      `95% CI Lower` = round(`95% CI Lower`, 4),
+      `95% CI Upper` = round(`95% CI Upper`, 4),
+      `P-value` = ifelse(`P-value` < 0.001, "<0.001", 
+                         ifelse(`P-value` < 0.01, sprintf("%.3f", `P-value`),
+                                sprintf("%.2f", `P-value`))),
+      `% Change` = round(`% Change`, 2)
+    ) %>%
+    # Create a combined CI column
+    mutate(
+      `95% CI` = paste0("[", `95% CI Lower`, ", ", `95% CI Upper`, "]")
+    ) %>%
+    select(-`95% CI Lower`, -`95% CI Upper`) %>%
+    # Reorder columns
+    select(Analysis, Year, `Effect (IHS)`, `Effect (CHF)`, `95% CI`, `SE`, `P-value`, `% Change`)
+  
+  return(publication_table)
 }
 
 
