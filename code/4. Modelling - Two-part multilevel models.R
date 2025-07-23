@@ -442,8 +442,93 @@ t2 <- df_table %>%
 #   width(j = "p.value", width = 0.8)        # P-value column
 
 gt::gtsave(t2, file = file.path(result_folder,'Table 2.png'), vwidth = 1500, vheight = 1000)
-# save_as_docx(t2_flex,
-#   path = file.path(result_folder,'Table 2.docx'))
+save_as_docx(t2 %>%  as_flex_table() ,
+  path = file.path(result_folder,'Table 2.docx'))
+
+
+library(officer)
+library(flextable)
+library(gtsummary)
+
+# Create the table (without gt conversion)
+t2_base <- df_table %>% 
+  select('PRESTATIONS_BRUTES_AOS_b','PRESTATIONS_BRUTES_AOS','PRESTATIONS_BRUTES_AOS_users',
+         'PRESTATIONS_BRUTES_LCA_b','PRESTATIONS_BRUTES_LCA','PRESTATIONS_BRUTES_LCA_users',
+         'PRESTATIONS_BRUTES_CAM_b','PRESTATIONS_BRUTES_CAM','PRESTATIONS_BRUTES_CAM_users',
+         'alternative_cam','PRESTATIONS_CAM_LCA','PRESTATIONS_CAM_LCA_users','NOANNEE') %>%
+  tbl_summary(by = NOANNEE, missing = 'no',
+              statistic = list(
+                all_continuous() ~ "{median} ({p25},{p75})",
+                all_categorical() ~ "{n} ({p}%)"
+              ),
+              digits = all_continuous() ~ 2,
+              label = list(
+                PRESTATIONS_BRUTES_AOS_b ~ 'Prevalence',
+                PRESTATIONS_BRUTES_AOS ~ 'Expenditures - all individuals',
+                PRESTATIONS_BRUTES_AOS_users ~ 'Expenditures - users only',
+                PRESTATIONS_BRUTES_CAM_b ~ "Prevalence",
+                PRESTATIONS_BRUTES_CAM ~ 'Expenditures - all individuals',
+                PRESTATIONS_BRUTES_CAM_users ~ 'Expenditures - users only',
+                PRESTATIONS_BRUTES_LCA_b ~ 'Prevalence',
+                PRESTATIONS_BRUTES_LCA ~ "Expenditures - all individuals",
+                PRESTATIONS_BRUTES_LCA_users ~ "Expenditures - users only",
+                alternative_cam ~ "Prevalence",
+                PRESTATIONS_CAM_LCA ~ "Total expenditures - all individuals",
+                PRESTATIONS_CAM_LCA_users ~ "Total expenditures - users only"
+              )) %>%
+  add_p(test = list(all_categorical() ~ "chisq.test",
+                    all_continuous() ~ "kruskal.test")) %>%
+  modify_header(label = "**Variable**") %>%
+  add_overall() %>%
+  modify_header(p.value ~ "***P*-value**") %>%
+  modify_table_body(
+    ~.x %>%
+      add_row(variable = "group1", label = "**CM (MHI)**", .before = 1) %>%
+      add_row(variable = "group2", label = "**CAM (SI)**", .before = 5) %>%
+      add_row(variable = "group3", label = "**CAM (MHI)**", .before = 9) %>%
+      add_row(variable = "group4", label = "**Exclusive CAM Usage (MHI or SI)**", .before = 13)
+  ) %>%
+  modify_footnote(all_stat_cols() ~ "n (%); Median (Q1,Q3)") %>%
+  modify_footnote(p.value ~ "Pearson's Chi-squared test; Kruskal-Wallis rank sum test")
+
+t2_flextable <- t2_base %>%
+  as_flex_table() %>%
+  fontsize(size = 9, part = "all") %>%
+  font(fontname = "Arial", part = "all") %>%
+  align(align = "left", part = "all") %>%
+  align(align = "center", part = "header") %>%
+  padding(padding = 6, part = "all") %>%
+  
+  # Remove the problematic conditional padding line
+  # The indentation was already handled in the gtsummary step with modify_table_styling()
+  
+  # Style borders
+  border_remove() %>%
+  hline_top(border = fp_border(color = "black", width = 2), part = "header") %>%
+  hline_bottom(border = fp_border(color = "black", width = 2), part = "header") %>%
+  hline_bottom(border = fp_border(color = "black", width = 1.5), part = "body") %>%
+  
+  # Color alternating rows for better readability
+  bg(i = seq(2, nrow(.), by = 2), bg = "#f8f9fa", part = "body") %>%
+  
+  # Set column widths
+  width(j = "label", width = 2.5) %>%
+  width(j = 2:6, width = 1.2) %>%
+  width(j = "p.value", width = 1.0)
+
+# Create Word document
+doc <- read_docx() %>%
+  body_add_par("Table 2: Healthcare utilization and expenditures of the study population", 
+               style = "heading 1") %>%
+  body_add_par("", style = "Normal") %>%
+  body_add_flextable(value = t2_flextable, align = "center") %>%
+  body_add_par("", style = "Normal") %>%
+  body_add_par("Abbreviations: CM, conventional medicine; CAM, complementary and alternative medicine; MHI, mandatory health insurance; SI, supplementary insurance", 
+               style = "Normal")
+
+# Save the Word document
+print(doc, target = file.path(result_folder, 'Table 2.docx'))
+
 
 ################### MODELLING ###################
 # Define model specifications
